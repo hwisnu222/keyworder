@@ -1,22 +1,17 @@
-import sys
 import os
 from google import genai
 from google.genai.errors import APIError
 from PIL import Image
-from dotenv import load_dotenv  # Import library dotenv
+from dotenv import load_dotenv
 import inquirer
 from pathlib import Path
 
-# Muat variabel lingkungan dari file .env
 load_dotenv()
 
 
 class Keyworder:
-    # --- Konfigurasi ---
-    MODEL_NAME = "gemini-2.5-flash"
-
     api_key = os.getenv("GEMINI_API_KEY")
-
+    MODEL_NAME = "gemini-2.5-flash"
     SYSTEM_INSTRUCTION = (
         "You are an expert SEO image caption writer for a stock photo platform like Shutterstock. "
         "Your task is to analyze an image and generate a Title, Description, two Categories, and Tags "
@@ -33,17 +28,14 @@ class Keyworder:
 
     def analyze_image_for_shutterstock(self, image_path):
         if not self.api_key:
-            print("❌ Error: Variabel lingkungan 'GEMINI_API_KEY' tidak ditemukan.")
-            print(
-                "Pastikan Anda memiliki file .env di direktori ini dengan kunci API yang benar."
-            )
+            print("[ERROR] 'GEMINI_API_KEY' not found")
             return
 
         try:
             client = genai.Client(api_key=self.api_key)
 
             img = Image.open(image_path)
-            print(f"[PROGRESS] Image is loaded '{image_path}'. Send to Gemini server")
+            print(f"[PROGRESS] Image is loaded: '{image_path}'. Send to Gemini server")
 
             response = client.models.generate_content(
                 model=self.MODEL_NAME,
@@ -54,13 +46,12 @@ class Keyworder:
             )
 
             print("\n" + "=" * 50)
-            print("Result: ")
             if not response.text is None:
                 print(response.text.strip())
                 print("=" * 50)
                 return
 
-            print("failed get response server")
+            print("[ERROR] failed get response server")
 
         except FileNotFoundError:
             print(f"[ERROR] image not found: {image_path}")
