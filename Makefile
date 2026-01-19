@@ -1,8 +1,9 @@
+.PHONY: run install
+
+PYTHON = ./env/bin/python
+
 run:
-	python main.py
+	$(PYTHON) main.py
 
 install:
-	python install -r requirements.txt
-
-env:
-	source env/bin/activate
+	$(PYTHON) install -r requirements.txt

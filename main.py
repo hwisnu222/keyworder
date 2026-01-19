@@ -1,3 +1,4 @@
+import sys
 import os
 from google import genai
 from google.genai.errors import APIError
@@ -5,6 +6,7 @@ from PIL import Image
 from dotenv import load_dotenv
 import inquirer
 from pathlib import Path
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -28,14 +30,16 @@ class Keyworder:
 
     def analyze_image_for_shutterstock(self, image_path):
         if not self.api_key:
-            print("[ERROR] 'GEMINI_API_KEY' not found")
+            tqdm.write("[ERROR] 'GEMINI_API_KEY' not found")
             return
 
         try:
             client = genai.Client(api_key=self.api_key)
 
             img = Image.open(image_path)
-            print(f"[PROGRESS] Image is loaded: '{image_path}'. Send to Gemini server")
+            tqdm.write(
+                f"[PROGRESS] Image is loaded: '{image_path}'. Send to Gemini server"
+            )
 
             response = client.models.generate_content(
                 model=self.MODEL_NAME,
@@ -45,34 +49,48 @@ class Keyworder:
                 ),
             )
 
-            print("\n" + "=" * 50)
+            tqdm.write("\n" + "=" * 50)
             if not response.text is None:
-                print(response.text.strip())
-                print("=" * 50)
+                tqdm.write(response.text.strip())
+                tqdm.write("=" * 50)
                 return
 
-            print("[ERROR] failed get response server")
+            tqdm.write("[ERROR] failed get response server")
 
         except FileNotFoundError:
-            print(f"[ERROR] image not found: {image_path}")
+            tqdm.write(f"[ERROR] image not found: {image_path}")
         except APIError as e:
-            print(f"[ERROR] failed to connect Gemini API. Error: ({e})")
+            tqdm.write(f"[ERROR] failed to connect Gemini API. Error: ({e})")
         except Exception as e:
-            print(f"[ERROR] : {e}")
+            tqdm.write(f"[ERROR] : {e}")
 
 
 if __name__ == "__main__":
 
-    stock = Path("../stock/")
+    stock = Path("./stock/")
     paths = list(stock.glob("*.eps"))
+
+    if not len(paths) > 0:
+        print("[ERROR] please add file *.eps in stock folder")
+        os.makedirs("stock", exist_ok=True)
+        sys.exit(1)
+
     paths.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
     path_choices = [(f.name, str(f)) for f in paths][:5]
 
-    question = [inquirer.List("path", message="Select filename", choices=path_choices)]
+    question = [
+        inquirer.Checkbox("paths", message="Select filename", choices=path_choices)
+    ]
 
     selected = inquirer.prompt(question)
 
     if not selected is None:
-        keyworder = Keyworder()
-        keyworder.analyze_image_for_shutterstock(selected["path"])
+        if len(selected["paths"]) < 1:
+            print("please select option")
+            sys.exit(1)
+
+        selected_paths = selected["paths"]
+        for path in tqdm(selected_paths):
+            keyworder = Keyworder()
+            keyworder.analyze_image_for_shutterstock(path)
