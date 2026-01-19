@@ -115,8 +115,8 @@ class Keyworder:
                     image_path,
                     title=metadata.get("title"),
                     description=metadata.get("description"),
-                    keywords=",".join(metadata.get("keywords")),
-                    categories=",".join(metadata.get("categories")),
+                    keywords=metadata.get("keywords"),
+                    categories=metadata.get("categories"),
                 )
                 tqdm.write(response.text.strip())
                 tqdm.write("=" * 50)
