@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import inquirer
 from pathlib import Path
 from tqdm import tqdm
+from exiftool import ExifToolHelper
+import json
 
 load_dotenv()
 
@@ -19,14 +21,69 @@ class Keyworder:
         "Your task is to analyze an image and generate a Title, Description, two Categories, and Tags "
         "in English. The output must be highly relevant, engaging, and optimized with keywords "
         "that are frequently searched on Google Trends or stock photo platforms. "
+        """
+        Available categories:
+        - abstract
+        - animals/Wildlife
+        - arts
+        - backgrounds/Textures
+        - beauty/Fashion
+        - buildings/Landmarks
+        - business/Finance
+        - celebrities
+        - education
+        - food and drink
+        - healthcare/Medical
+        - holidays
+        - industrial
+        - interiors
+        - miscellaneous
+        - nature
+        - objects
+        - parks/Outdoor
+        - people
+        - religion
+        - science
+        - signs/Symbols
+        - sports/Recreation
+        - technology
+        - transportation
+        - vintage
+        """
         "The output must follow this exact format:"
         "\n\n"
-        "Title: [Your SEO Title Here]\n"
-        "Description: [Your detailed, keyword-rich description here]\n"
-        "Category 1: [First category, e.g., Abstract]\n"
-        "Category 2: [Second category, e.g., Technology]\n"
-        "Tags: tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10 (Do NOT use a list or bullet points for tags, and use lowercase.)"
+        "Title: Your SEO Title Here\n"
+        "Description: Your detailed, keyword-rich description here\n"
+        "Categories: category with lower case\n"
+        "OUTPUT FORMAT (MUST BE VALID JSON) dont add any character invalid json:\n"
+        "{\n"
+        '  "title": "string",\n'
+        '  "description": "string",\n'
+        '  "categories": "string", "string",\n'
+        '  "keywords": "keyword1", "kwyword2", "keyword3", ...\n'
+        "}"
     )
+
+    def add_metadata_to_eps(self, file_path, title, description, keywords, categories):
+        try:
+            with ExifToolHelper() as et:
+                et.set_tags(
+                    [file_path],
+                    tags={
+                        "Headline": title,
+                        "Description": description,
+                        "Caption-Abstract": description,
+                        "Keywords": keywords,
+                        "Categories": categories,
+                        "XMP:Title": title,
+                        "XMP:Description": description,
+                        "XMP:Subject": keywords,
+                    },
+                    params=["-overwrite_original"],  # disable file backup .eps_original
+                )
+            print(f"[SUCCESS] add metadata to: {os.path.basename(file_path)}")
+        except Exception as e:
+            print(f"[ERROR] {file_path} file: {e}")
 
     def analyze_image_for_shutterstock(self, image_path):
         if not self.api_key:
@@ -45,12 +102,22 @@ class Keyworder:
                 model=self.MODEL_NAME,
                 contents=img,
                 config=genai.types.GenerateContentConfig(
-                    system_instruction=self.SYSTEM_INSTRUCTION
+                    system_instruction=self.SYSTEM_INSTRUCTION,
+                    response_mime_type="application/json",
                 ),
             )
 
             tqdm.write("\n" + "=" * 50)
             if not response.text is None:
+                metadata = json.loads(response.text)
+
+                self.add_metadata_to_eps(
+                    image_path,
+                    title=metadata.get("title"),
+                    description=metadata.get("description"),
+                    keywords=",".join(metadata.get("keywords")),
+                    categories=",".join(metadata.get("categories")),
+                )
                 tqdm.write(response.text.strip())
                 tqdm.write("=" * 50)
                 return
