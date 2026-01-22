@@ -59,8 +59,8 @@ class Keyworder:
         "{\n"
         '  "title": "string",\n'
         '  "description": "string",\n'
-        '  "categories": "string", "string",\n'
-        '  "keywords": "keyword1", "kwyword2", "keyword3", ...\n'
+        '  "categories": ["string", "string"],\n'
+        '  "keywords": ["string", "string", "string"]\n'
         "}"
     )
 
@@ -106,6 +106,8 @@ class Keyworder:
                     response_mime_type="application/json",
                 ),
             )
+
+            print(response.text)
 
             tqdm.write("\n" + "=" * 50)
             if not response.text is None:
