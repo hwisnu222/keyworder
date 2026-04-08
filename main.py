@@ -64,7 +64,16 @@ class Keyworder:
         "}"
     )
 
+    def has_exif(self, path):
+        with ExifToolHelper() as et:
+            metadata = et.get_metadata(path)
+
+            if metadata[0].get("XMP:Title"):
+                return True
+            return False
+
     def add_metadata_to_eps(self, file_path, title, description, keywords, categories):
+
         try:
             with ExifToolHelper() as et:
                 et.set_tags(
@@ -136,6 +145,8 @@ class Keyworder:
 
 if __name__ == "__main__":
 
+    keyworder = Keyworder()
+
     stock = Path("./stock/eps")
     if not stock.exists():
         print("creating ./stock/eps/ directory")
@@ -149,20 +160,33 @@ if __name__ == "__main__":
 
     paths.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
-    path_choices = [(f.name, str(f)) for f in paths]
+    print("Checking exif data...")
+    selected = []
+    for path in tqdm(paths[:8]):
+        # select file only don't have exif
+        has_exif = keyworder.has_exif(path)
+        if not has_exif:
+            selected.append(path)
 
-    question = [
-        inquirer.Checkbox("paths", message="Select filename", choices=path_choices)
-    ]
 
-    selected = inquirer.prompt(question)
+
+    # path_choices = [(f.name, str(f)) for f in paths]
+    #
+    # question = [
+    #     inquirer.Checkbox("paths", message="Select filename", choices=path_choices)
+    # ]
+    #
+    # selected = inquirer.prompt(question)
+    #
+    
+
 
     if not selected is None:
-        if len(selected["paths"]) < 1:
+        if len(selected) < 1:
             print("please select option")
             sys.exit(1)
 
-        selected_paths = selected["paths"]
+        print("Generate exif data to file...")
+        selected_paths = selected
         for path in tqdm(selected_paths):
-            keyworder = Keyworder()
             keyworder.analyze_image_for_shutterstock(path)
