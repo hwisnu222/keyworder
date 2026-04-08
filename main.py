@@ -116,9 +116,6 @@ class Keyworder:
                 ),
             )
 
-            print(response.text)
-
-            tqdm.write("\n" + "=" * 50)
             if not response.text is None:
                 metadata = json.loads(response.text)
 
@@ -129,8 +126,7 @@ class Keyworder:
                     keywords=metadata.get("keywords"),
                     categories=metadata.get("categories"),
                 )
-                tqdm.write(response.text.strip())
-                tqdm.write("=" * 50)
+                tqdm.write(f"\033[32m[DONE]\033[0m {image_path}")
                 return
 
             tqdm.write("[ERROR] failed get response server")
@@ -140,7 +136,7 @@ class Keyworder:
         except APIError as e:
             tqdm.write(f"[ERROR] failed to connect Gemini API. Error: ({e})")
         except Exception as e:
-            tqdm.write(f"[ERROR] : {e}")
+            tqdm.write(f"\033[31m[ERROR]\033[0m : {e}")
 
 
 if __name__ == "__main__":
@@ -167,6 +163,7 @@ if __name__ == "__main__":
         has_exif = keyworder.has_exif(path)
         if not has_exif:
             selected.append(path)
+            tqdm.write(f"\033[31m[X]\033[0m {path}")
 
 
 
