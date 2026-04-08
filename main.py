@@ -136,17 +136,20 @@ class Keyworder:
 
 if __name__ == "__main__":
 
-    stock = Path("./stock/")
+    stock = Path("./stock/eps")
+    if not stock.exists():
+        print("creating ./stock/eps/ directory")
+        os.makedirs(stock, exist_ok=True)
     paths = list(stock.glob("*.eps"))
 
     if not len(paths) > 0:
-        print("[ERROR] please add file *.eps in stock folder")
+        print("[ERROR] please add file *.eps in ./stock/eps/ folder")
         os.makedirs("stock", exist_ok=True)
         sys.exit(1)
 
     paths.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
-    path_choices = [(f.name, str(f)) for f in paths][:5]
+    path_choices = [(f.name, str(f)) for f in paths]
 
     question = [
         inquirer.Checkbox("paths", message="Select filename", choices=path_choices)
