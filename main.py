@@ -4,14 +4,13 @@ from google import genai
 from google.genai.errors import APIError
 from PIL import Image
 from dotenv import load_dotenv
-import inquirer
 from pathlib import Path
 from tqdm import tqdm
 from exiftool import ExifToolHelper
 import json
+import argparse
 
 load_dotenv()
-
 
 class Keyworder:
     api_key = os.getenv("GEMINI_API_KEY")
@@ -112,6 +111,7 @@ class Keyworder:
                 contents=img,
                 config=genai.types.GenerateContentConfig(
                     system_instruction=self.SYSTEM_INSTRUCTION,
+                    # change response to json format
                     response_mime_type="application/json",
                 ),
             )
@@ -140,6 +140,10 @@ class Keyworder:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-l', '--limit', help="limit file check in newest")
+    args = parser.parse_args()
 
     keyworder = Keyworder()
 
@@ -147,43 +151,36 @@ if __name__ == "__main__":
     if not stock.exists():
         print("creating ./stock/eps/ directory")
         os.makedirs(stock, exist_ok=True)
+
     paths = list(stock.glob("*.eps"))
 
     if not len(paths) > 0:
         print("[ERROR] please add file *.eps in ./stock/eps/ folder")
-        os.makedirs("stock", exist_ok=True)
         sys.exit(1)
 
     paths.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
     print("Checking exif data...")
     selected = []
-    for path in tqdm(paths[:8]):
+    limit = 8
+    if args.limit:
+        limit = int(args.limit)
+    for path in tqdm(paths[:limit]):
         # select file only don't have exif
         has_exif = keyworder.has_exif(path)
         if not has_exif:
             selected.append(path)
             tqdm.write(f"\033[31m[X]\033[0m {path}")
 
-
-
-    # path_choices = [(f.name, str(f)) for f in paths]
-    #
-    # question = [
-    #     inquirer.Checkbox("paths", message="Select filename", choices=path_choices)
-    # ]
-    #
-    # selected = inquirer.prompt(question)
-    #
-    
-
-
     if not selected is None:
-        if len(selected) < 1:
-            print("please select option")
-            sys.exit(1)
+        try:
+            if len(selected) < 1:
+                print("please select option")
+                sys.exit(1)
 
-        print("Generate exif data to file...")
-        selected_paths = selected
-        for path in tqdm(selected_paths):
-            keyworder.analyze_image_for_shutterstock(path)
+            print("Generate exif data to file...")
+            selected_paths = selected
+            for path in tqdm(selected_paths):
+                keyworder.analyze_image_for_shutterstock(path)
+        except KeyboardInterrupt:
+            print("Process cancalled")
