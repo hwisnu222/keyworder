@@ -12,6 +12,13 @@ import argparse
 
 load_dotenv()
 
+# colors
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+DEFAULT = "\033[0m"
+
+
 class Keyworder:
     api_key = os.getenv("GEMINI_API_KEY")
     MODEL_NAME = "gemini-2.5-flash"
@@ -89,21 +96,21 @@ class Keyworder:
                     },
                     params=["-overwrite_original"],  # disable file backup .eps_original
                 )
-            print(f"[SUCCESS] add metadata to: {os.path.basename(file_path)}")
+            print(f"{GREEN}[SUCCESS]{DEFAULT} added metadata to: {os.path.basename(file_path)}")
         except Exception as e:
-            print(f"[ERROR] {file_path} file: {e}")
+            print(f"{RED}[ERROR]{DEFAULT} {file_path} file: {e}")
 
     def analyze_image_for_shutterstock(self, image_path):
         if not self.api_key:
-            tqdm.write("[ERROR] 'GEMINI_API_KEY' not found")
-            return
+            tqdm.write("{RED}[ERROR]{DEFAULT} 'GEMINI_API_KEY' not found")
+            sys.exit(1)
 
         try:
             client = genai.Client(api_key=self.api_key)
 
             img = Image.open(image_path)
             tqdm.write(
-                f"[PROGRESS] Image is loaded: '{image_path}'. Send to Gemini server"
+                f"{YELLOW}[PROGRESS]{DEFAULT} Image is loaded: '{image_path}'. Send to Gemini server"
             )
 
             response = client.models.generate_content(
@@ -126,41 +133,45 @@ class Keyworder:
                     keywords=metadata.get("keywords"),
                     categories=metadata.get("categories"),
                 )
-                tqdm.write(f"\033[32m[DONE]\033[0m {image_path}")
                 return
 
-            tqdm.write("[ERROR] failed get response server")
+            tqdm.write(f"{RED}[ERROR]{DEFAULT} failed get response server")
 
         except FileNotFoundError:
-            tqdm.write(f"[ERROR] image not found: {image_path}")
+            tqdm.write(f"{RED}[ERROR]{DEFAULT} image not found: {image_path}")
         except APIError as e:
-            tqdm.write(f"[ERROR] failed to connect Gemini API. Error: ({e})")
+            tqdm.write(f"{RED}[ERROR]{DEFAULT} failed to connect Gemini API. Error: ({e})")
         except Exception as e:
-            tqdm.write(f"\033[31m[ERROR]\033[0m : {e}")
+            tqdm.write(f"{RED}[ERROR]{DEFAULT} : {e}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-l', '--limit', help="limit file check in newest")
+    parser.add_argument('-p', '--path', help="EPS files of directory path")
     args = parser.parse_args()
 
     keyworder = Keyworder()
 
-    stock = Path("./stock/eps")
+    workdir = "./stock/eps"
+    if args.path and os.path.exists(workdir):
+        workdir = args.path
+
+    stock = Path(workdir)
     if not stock.exists():
-        print("creating ./stock/eps/ directory")
+        print(f"creating {workdir} directory")
         os.makedirs(stock, exist_ok=True)
 
     paths = list(stock.glob("*.eps"))
 
     if not len(paths) > 0:
-        print("[ERROR] please add file *.eps in ./stock/eps/ folder")
+        print(f"{RED}[ERROR]{DEFAULT} please add file *.eps in {workdir} folder")
         sys.exit(1)
 
     paths.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
-    print("Checking exif data...")
+    print(f"Checking exif data in {workdir} directory...")
     selected = []
     limit = 8
     if args.limit:
@@ -170,17 +181,17 @@ if __name__ == "__main__":
         has_exif = keyworder.has_exif(path)
         if not has_exif:
             selected.append(path)
-            tqdm.write(f"\033[31m[X]\033[0m {path}")
+            tqdm.write(f"{RED}[X]{DEFAULT} {path}")
 
     if not selected is None:
         try:
             if len(selected) < 1:
-                print("please select option")
+                print(f"{YELLOW}[INFO]{DEFAULT} all *.eps file in {workdir} directory has added exif metadata")
                 sys.exit(1)
 
             print("Generate exif data to file...")
             selected_paths = selected
             for path in tqdm(selected_paths):
                 keyworder.analyze_image_for_shutterstock(path)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             print("Process cancalled")
